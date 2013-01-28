@@ -2,6 +2,8 @@
 """Determine the Python 3 porting status of various ZTK packages."""
 
 import json
+import subprocess
+import sys
 import urllib.request
 
 
@@ -33,6 +35,7 @@ def get_metadata(package_name):
 
 
 def extract_py_versions(classifiers):
+    """Extract a list of supported Python versions from trove classifiers."""
     prefix = 'Programming Language :: Python :: ' # note trailing space
     versions = []
     seen_detailed = set()
@@ -55,17 +58,61 @@ def extract_py_versions(classifiers):
 
 
 def extract_interesting_information(metadata):
+    """Extract interesting package information from PyPI metadata."""
     info = metadata['info']
     return dict(name=info['name'], version=info['version'],
                 supports=extract_py_versions(info['classifiers']))
 
 
+# How do get a list of interesting Zope packages?
+# One option: list all projects in Zope SVN and ZopeFoundation github
+# Another option: look at the KGS definition at
+# http://zope3.pov.lt/trac/browser/zope.release/trunk/releases/controlled-packages.cfg?format=txt
+
+
+ZOPE_SVN = 'svn://svn.zope.org/repos/main'
+# or we could do an HTTP request from http://svn.zope.org/ and scrape HTML
+
+
+def list_zope_packages_from_svn():
+    """Fetch a list of Zope projects from Subversion.
+
+    Requires the command-line subversion tool.
+    """
+    EXCEPTIONS = {
+        # Things that are unlikely to ever be released to PyPI
+        '2github', 'Sandbox', 'ReleaseSupport', 'Skeletons',
+        'buildout-website', 'developer_docs', 'docs.zope.org_website',
+        'non-zpl-doc-resources', 'www.zope.org', 'www.zope.org_buildout',
+        'zodbdocs', 'zope-foundation-admin', 'zope-story-website',
+    }
+    subdirs = []
+    for line in subprocess.Popen(['svn', 'ls', ZOPE_SVN],
+                                 stdout=subprocess.PIPE).stdout:
+        line = line.strip()
+        if line.endswith(b'/'):
+            name = line[:-1].decode('UTF-8')
+            if name not in EXCEPTIONS:
+                subdirs.append(name)
+    return subdirs
+
+
 def main():
-    packages = ['zope.interface']
-    res = [
-        extract_interesting_information(get_metadata(package_name))
-        for package_name in packages
-    ]
+    verbose = False
+    packages = list_zope_packages_from_svn()
+    res = []
+    for package_name in packages:
+        try:
+            metadata = get_metadata(package_name)
+        except Exception as e:
+            if verbose:
+                print('Could not fetch metadata about {}: {}: {}'.format(
+                        package_name, e.__class__.__name__, e),
+                    file=sys.stderr)
+            info = dict(name=package_name, version=None, supports=[])
+        else:
+            info = extract_interesting_information(metadata)
+        res.append(info)
     print(json.dumps(res, sort_keys=True, indent=2))
 
 
