@@ -17,15 +17,20 @@ PYPI_SERVER = 'http://pypi.python.org/pypi'
 # (or you can use XMLRPC: http://wiki.python.org/moin/PyPiXmlRpc)
 
 
-def get_json(url):
-    """Perform HTTP GET for a URL, return deserialized JSON."""
+def _get_json_and_headers(url):
     with urllib.request.urlopen(url) as r:
         # We expect PyPI to return UTF-8, but let's verify that.
         content_type = r.info().get('Content-Type', '').lower()
-        if content_type != 'application/json; charset="utf-8"':
+        if content_type not in ('application/json; charset="utf-8"',
+                                'application/json; charset=utf-8'):
             raise Error('Did not get UTF-8 JSON data from {}, got {}'
                         .format(url, content_type))
-        return json.loads(r.read().decode('UTF-8'))
+        return json.loads(r.read().decode('UTF-8')), r.info()
+
+
+def get_json(url):
+    """Perform HTTP GET for a URL, return deserialized JSON."""
+    return _get_json_and_headers(url)[0]
 
 
 def get_metadata(package_name):
@@ -70,6 +75,7 @@ def extract_interesting_information(metadata):
 # http://zope3.pov.lt/trac/browser/zope.release/trunk/releases/controlled-packages.cfg?format=txt
 
 
+ZOPE_GITHUB_LIST = 'https://api.github.com/orgs/ZopeFoundation/repos'
 ZOPE_SVN = 'svn://svn.zope.org/repos/main'
 # or we could do an HTTP request from http://svn.zope.org/ and scrape HTML
 
@@ -97,9 +103,40 @@ def list_zope_packages_from_svn():
     return subdirs
 
 
+def get_github_list(url):
+    """Perform (a series of) HTTP GETs for a URL, return deserialized JSON.
+
+    Supports batching (which Github indicates by the presence of a Link header,
+    e.g. ::
+
+        Link: <https://api.github.com/resource?page=2>; rel="next",
+              <https://api.github.com/resource?page=5>; rel="last"
+
+    """
+    res, headers = _get_json_and_headers('{}?per_page=100'.format(url))
+    page = 1
+    while 'rel="next"' in headers.get('Link', ''):
+        page += 1
+        more, headers = _get_json_and_headers('{}?page={}&per_page=100'.format(
+                                                    url, page))
+        res += more
+    return res
+
+
+def list_zope_packages_from_github():
+    """Fetch a list of Zope projects from Github."""
+    return [repo['name'] for repo in get_github_list(ZOPE_GITHUB_LIST)]
+
+
+def list_zope_packages():
+    """Fetch a list of Zope projects from multiple sources."""
+    return sorted(set(list_zope_packages_from_svn()) |
+                  set(list_zope_packages_from_github()))
+
+
 def main():
     verbose = False
-    packages = list_zope_packages_from_svn()
+    packages = list_zope_packages()
     res = []
     for package_name in packages:
         try:

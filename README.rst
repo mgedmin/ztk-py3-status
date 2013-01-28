@@ -1,9 +1,11 @@
 Scripts to determine the Python 3 porting status of various ZTK packages
 ========================================================================
 
-Usage (this is science fiction at the moment)::
+Usage::
 
   ./update.py > status.json
+
+This takes a while (8 minutes for me).
 
 Example output::
 
@@ -11,4 +13,3 @@ Example output::
     'version': '4.0.3',
     'supports': ['2.6', '2.7', '3.2', '3.3']},
    ...]
-
