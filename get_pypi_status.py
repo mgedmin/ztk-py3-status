@@ -9,7 +9,11 @@ and produces an annotated JSON list ::
 
   [{"name": "zope.interface",
     "version": "4.0.3",
-    "supports": ["2.6", "2.7", "3.2", "3.3"]},
+    "sdist_url": "http://...",
+    "supports": ["2.6", "2.7", "3.2", "3.3"]}, ...]
+
+The information is extracted from the Python Package Index (PyPI),
+which takes a while (~8 minutes for 811 packages).
 
 This script requires Python 3.
 """
@@ -74,7 +78,16 @@ def extract_interesting_information(metadata):
     """Extract interesting package information from PyPI metadata."""
     info = metadata['info']
     return dict(version=info['version'],
-                supports=extract_py_versions(info['classifiers']))
+                supports=extract_py_versions(info['classifiers']),
+                sdist_url=extract_sdist_url(metadata))
+
+
+def extract_sdist_url(metadata):
+    """Extract the URL for downloading the source distribution."""
+    for info in metadata['urls']:
+        if info['packagetype'] == 'sdist':
+            return info['url']
+    return None
 
 
 def main():
