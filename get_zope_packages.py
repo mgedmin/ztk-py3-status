@@ -13,6 +13,7 @@ Example output::
 """
 
 import json
+import sys
 import subprocess
 import urllib.request
 
@@ -107,10 +108,15 @@ def list_zope_packages():
                   set(list_zope_packages_from_github()))
 
 
+def dump_pretty_json(data, fp=sys.stdout):
+    """Dump pretty-printed JSON data to a file."""
+    json.dump(data, fp, sort_keys=True, indent=2, separators=(',', ': '))
+
+
 def main():
-    packages = list_zope_packages()
-    res = [dict(name=name) for name in packages]
-    print(json.dumps(res, sort_keys=True, indent=2))
+    package_names = list_zope_packages()
+    packages = [dict(name=name) for name in package_names]
+    dump_pretty_json(packages)
 
 
 if __name__ == '__main__':

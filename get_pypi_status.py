@@ -90,6 +90,11 @@ def extract_sdist_url(metadata):
     return None
 
 
+def dump_pretty_json(data, fp=sys.stdout):
+    """Dump pretty-printed JSON data to a file."""
+    json.dump(data, fp, sort_keys=True, indent=2, separators=(',', ': '))
+
+
 def main():
     verbose = False
     packages = json.load(sys.stdin)
@@ -106,7 +111,7 @@ def main():
             info.update(version=None, sdist_url=None, supports=[])
         else:
             info.update(extract_interesting_information(metadata))
-    print(json.dumps(packages, sort_keys=True, indent=2))
+    dump_pretty_json(packages)
 
 
 if __name__ == '__main__':

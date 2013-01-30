@@ -136,6 +136,11 @@ def parse_requirements(requires_txt_data):
     return requirements
 
 
+def dump_pretty_json(data, fp=sys.stdout):
+    """Dump pretty-printed JSON data to a file."""
+    json.dump(data, fp, sort_keys=True, indent=2, separators=(',', ': '))
+
+
 def main():
     packages = json.load(sys.stdin)
     for info in packages:
@@ -159,7 +164,7 @@ def main():
                             sdist_filename, e.__class__, e),
                           file=sys.stderr)
         info['requires'] = requirements
-    print(json.dumps(packages, sort_keys=True, indent=2))
+    dump_pretty_json(packages)
 
 
 if __name__ == '__main__':
