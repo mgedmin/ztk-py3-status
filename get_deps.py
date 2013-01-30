@@ -171,23 +171,22 @@ def main():
     for info in packages:
         package_name = info['name']
         sdist_url = info.get('sdist_url')
-        if not sdist_url:
-            continue
         requirements = []
-        try:
-            sdist_filename = get_local_sdist(sdist_url, args.cache_dir)
-        except Exception as e:
-            print('Could not fetch sdist {}: {}: {}'.format(
-                        sdist_url, e.__class__.__name__, e),
-                      file=sys.stderr)
-        else:
+        if sdist_url:
             try:
-                requires_txt_data = extract_requirements(sdist_filename)
-                requirements = parse_requirements(requires_txt_data or b'')
+                sdist_filename = get_local_sdist(sdist_url, args.cache_dir)
             except Exception as e:
-                print('Could not parse requires.txt for {}: {}: {}'.format(
-                            sdist_filename, e.__class__, e),
+                print('Could not fetch sdist {}: {}: {}'.format(
+                            sdist_url, e.__class__.__name__, e),
                           file=sys.stderr)
+            else:
+                try:
+                    requires_txt_data = extract_requirements(sdist_filename)
+                    requirements = parse_requirements(requires_txt_data or b'')
+                except Exception as e:
+                    print('Could not parse requires.txt for {}: {}: {}'.format(
+                                sdist_filename, e.__class__, e),
+                              file=sys.stderr)
         info['requires'] = requirements
     dump_pretty_json(packages)
 
