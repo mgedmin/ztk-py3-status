@@ -103,7 +103,7 @@ def main():
                 print('Could not fetch metadata about {}: {}: {}'.format(
                         package_name, e.__class__, e),
                       file=sys.stderr)
-            info.update(version=None, supports=[])
+            info.update(version=None, sdist_url=None, supports=[])
         else:
             info.update(extract_interesting_information(metadata))
     print(json.dumps(packages, sort_keys=True, indent=2))

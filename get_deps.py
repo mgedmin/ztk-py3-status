@@ -140,7 +140,9 @@ def main():
     packages = json.load(sys.stdin)
     for info in packages:
         package_name = info['name']
-        sdist_url = info['sdist_url']
+        sdist_url = info.get('sdist_url')
+        if not sdist_url:
+            continue
         requirements = []
         try:
             sdist_filename = get_local_sdist(sdist_url)
