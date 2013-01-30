@@ -139,10 +139,25 @@ def dump_pretty_json(data, fp=sys.stdout):
     json.dump(data, fp, sort_keys=True, indent=2, separators=(',', ': '))
 
 
+class ArgFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                   argparse.RawDescriptionHelpFormatter):
+
+    usage_suffix = ' < status.json > deps.json'
+
+    # argparse says: "the API of the formatter objects is still considered an
+    # implementation detail."  *sigh*  So I have to either duplicate
+    # information and hardcode my usage string, or rely on internal
+    # implementation details.
+
+    def _format_usage(self, *args):
+        return (super(ArgFormatter, self)._format_usage(*args).rstrip('\n\n')
+                + self.usage_suffix + '\n\n')
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description='annotate package JSON with requirements',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description=__doc__,
+        formatter_class=ArgFormatter)
     parser.add_argument('--cache-dir', metavar='DIR', default='.cache',
                         help='directory for caching downloaded sdists')
     args = parser.parse_args()
