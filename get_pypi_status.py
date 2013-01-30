@@ -106,7 +106,7 @@ def main():
             not_found = isinstance(e, urllib.error.HTTPError) and e.code == 404
             if verbose or not not_found:
                 print('Could not fetch metadata about {}: {}: {}'.format(
-                        package_name, e.__class__, e),
+                        package_name, e.__class__.__name__, e),
                       file=sys.stderr)
             info.update(version=None, sdist_url=None, supports=[])
         else:

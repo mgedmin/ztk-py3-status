@@ -153,7 +153,7 @@ def main():
             sdist_filename = get_local_sdist(sdist_url)
         except Exception as e:
             print('Could not fetch sdist {}: {}: {}'.format(
-                        sdist_url, e.__class__, e),
+                        sdist_url, e.__class__.__name__, e),
                       file=sys.stderr)
         else:
             try:
