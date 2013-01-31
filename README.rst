@@ -22,8 +22,9 @@ Example output::
 Caching
 -------
 
-The ./get_pypi_status.py caches metadata received from PyPI for 24 hours
-by default in ./cache/meta/\*.json.  You can override these settings with
+The ./get_pypi_status.py script caches metadata received from PyPI in
+./cache/meta/\*.json for 24 hours by default.  You can override these settings
+with ::
 
   ./get_pypi_status.py --cache-dir=~/.cache/pypi-meta --cache-max-age=3600
 
