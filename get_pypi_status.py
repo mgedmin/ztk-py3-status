@@ -19,11 +19,13 @@ This script requires Python 3.
 """
 
 import argparse
+import email
 import json
 import os
 import sys
 import time
 import urllib.request
+from io import StringIO
 
 
 class Error(Exception):
@@ -82,12 +84,22 @@ def get_json(url):
 
 def get_metadata(package_name, cache_dir=None, max_age=ONE_DAY):
     """Get package metadata from PyPI."""
+    url = '{base_url}/{package_name}/json'.format(
+            base_url=PYPI_SERVER, package_name=package_name)
     if cache_dir:
         metadata = get_cached_metadata(package_name, cache_dir, max_age)
         if metadata is not None:
+            if metadata == {}:
+                headers = email.message_from_string('\n\n')
+                raise urllib.error.HTTPError(url, 404, 'Not Found (cached)',
+                                             headers, StringIO())
             return metadata
-    metadata = get_json('{base_url}/{package_name}/json'.format(
-        base_url=PYPI_SERVER, package_name=package_name))
+    try:
+        metadata = get_json(url)
+    except urllib.error.HTTPError as e:
+        if e.code == 404 and cache_dir:
+            put_cached_metadata(package_name, cache_dir, {})
+        raise
     if cache_dir:
         put_cached_metadata(package_name, cache_dir, metadata)
     return metadata
@@ -160,7 +172,7 @@ def main():
                         help='directory for caching PyPI metadata')
     parser.add_argument('--cache-max-age', metavar='AGE', default=ONE_DAY,
                         help='maximum age of cached metadata in seconds')
-    parser.add_argument('--verbose', action='store_true',
+    parser.add_argument('-v', '--verbose', action='store_true',
                         help='be more verbose')
     args = parser.parse_args()
     if not os.path.isdir(args.cache_dir):
