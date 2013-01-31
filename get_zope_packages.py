@@ -12,10 +12,12 @@ Example output::
 
 """
 
+import itertools
 import json
-import sys
 import subprocess
+import sys
 import urllib.request
+from operator import itemgetter
 
 
 class Error(Exception):
@@ -32,6 +34,9 @@ ZOPE_GITHUB_LIST = 'https://api.github.com/orgs/ZopeFoundation/repos'
 ZOPE_SVN = 'svn://svn.zope.org/repos/main'
 # or we could do an HTTP request from http://svn.zope.org/ and scrape HTML
 
+ZOPE_SVN_WEB = 'http://zope3.pov.lt/trac/browser/{}'
+# the official one is 'http://svn.zope.org/{}', but I prefer trac to viewcvs
+
 
 EXCEPTIONS = {
     # Things that are unlikely to ever be released to PyPI
@@ -47,15 +52,16 @@ def list_zope_packages_from_svn():
 
     Requires the command-line subversion tool.
     """
-    subdirs = []
+    packages = []
     for line in subprocess.Popen(['svn', 'ls', ZOPE_SVN],
                                  stdout=subprocess.PIPE).stdout:
         line = line.strip()
         if line.endswith(b'/'):
             name = line[:-1].decode('UTF-8')
             if name not in EXCEPTIONS:
-                subdirs.append(name)
-    return subdirs
+                packages.append(dict(name=name,
+                                     source_web_url=ZOPE_SVN_WEB.format(name)))
+    return packages
 
 
 def get_json_and_headers(url):
@@ -99,13 +105,18 @@ def list_zope_packages_from_github():
     """Fetch a list of Zope projects from Github."""
     # API documented at
     # http://developer.github.com/v3/repos/#list-organization-repositories
-    return [repo['name'] for repo in get_github_list(ZOPE_GITHUB_LIST)]
+    return [dict(name=repo['name'], source_web_url=repo['html_url'])
+            for repo in get_github_list(ZOPE_GITHUB_LIST)]
 
 
 def list_zope_packages():
     """Fetch a list of Zope projects from multiple sources."""
-    return sorted(set(list_zope_packages_from_svn()) |
-                  set(list_zope_packages_from_github()))
+    # order matters here: if repository is both in svn and in github, we
+    # assume github has the latest version
+    packages = {info['name']: info
+                for info in itertools.chain(list_zope_packages_from_svn(),
+                                            list_zope_packages_from_github())}
+    return sorted(packages.values(), key=itemgetter('name'))
 
 
 def dump_pretty_json(data, fp=sys.stdout):
@@ -114,8 +125,7 @@ def dump_pretty_json(data, fp=sys.stdout):
 
 
 def main():
-    package_names = list_zope_packages()
-    packages = [dict(name=name) for name in package_names]
+    packages = list_zope_packages()
     dump_pretty_json(packages)
 
 
