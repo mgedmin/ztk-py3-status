@@ -48,6 +48,11 @@ def main():
         else:
             info['supports_py3'] = True
             info['blockers'] = []
+        info['blocks'] = []
+    package_by_name = {info['name']: info for info in packages}
+    for info in packages:
+        for blocker in info['blockers']:
+            package_by_name[blocker]['blocks'].append(info['name'])
     dump_pretty_json(packages)
 
 
