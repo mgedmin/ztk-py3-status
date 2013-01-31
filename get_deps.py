@@ -96,7 +96,7 @@ def extract_requirements(sdist_filename):
 
 
 def strip_version_constraints(requirement):
-    """Strip version constraints from a requirement.
+    """Strip version constraints and extras from a requirement.
 
         >>> strip_version_constraints('zope.foo')
         'zope.foo'
@@ -107,10 +107,14 @@ def strip_version_constraints(requirement):
         >>> strip_version_constraints('zope.foo >=4.0.0, <4.1.0a1')
         'zope.foo'
 
+        >>> strip_version_constraints('zope.foo[docs] >=4.0.0, <4.1.0a1')
+        'zope.foo'
+
     """
     return (requirement.partition('=')[0]
                        .partition('<')[0]
                        .partition('>')[0]
+                       .partition('[')[0]
                        .strip())
 
 
