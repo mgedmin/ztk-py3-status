@@ -18,8 +18,11 @@ which takes a while (~8 minutes for 811 packages).
 This script requires Python 3.
 """
 
+import argparse
 import json
+import os
 import sys
+import time
 import urllib.request
 
 
@@ -31,6 +34,38 @@ PYPI_SERVER = 'http://pypi.python.org/pypi'
 
 # PyPI API is documented at http://wiki.python.org/moin/PyPiJson
 # (or you can use XMLRPC: http://wiki.python.org/moin/PyPiXmlRpc)
+
+
+ONE_DAY = 24*60*60 # seconds
+
+
+def get_cache_filename(package_name, cache_dir):
+    """Compute the pathname of the cache file corresponding to sdist_url."""
+    return os.path.join(cache_dir, package_name + '.json')
+
+
+def get_cached_metadata(package_name, cache_dir, max_age=ONE_DAY):
+    """Compute the pathname of the cache file corresponding to sdist_url."""
+    filename = get_cache_filename(package_name, cache_dir)
+    try:
+        with open(filename) as f:
+            mtime = os.fstat(f.fileno()).st_mtime
+            if time.time() - mtime > max_age:
+                return None
+            return json.load(f)
+    except IOError:
+        return None
+
+
+def put_cached_metadata(package_name, cache_dir, metadata):
+    """Compute the pathname of the cache file corresponding to sdist_url."""
+    filename = get_cache_filename(package_name, cache_dir)
+    try:
+        with open(filename, 'w') as f:
+            json.dump(metadata, f)
+    except IOError:
+        # cache not writable? ignore
+        pass
 
 
 def get_json(url):
@@ -45,10 +80,17 @@ def get_json(url):
         return json.loads(r.read().decode('UTF-8'))
 
 
-def get_metadata(package_name):
+def get_metadata(package_name, cache_dir=None, max_age=ONE_DAY):
     """Get package metadata from PyPI."""
-    return get_json('{base_url}/{package_name}/json'.format(
+    if cache_dir:
+        metadata = get_cached_metadata(package_name, cache_dir, max_age)
+        if metadata is not None:
+            return metadata
+    metadata = get_json('{base_url}/{package_name}/json'.format(
         base_url=PYPI_SERVER, package_name=package_name))
+    if cache_dir:
+        put_cached_metadata(package_name, cache_dir, metadata)
+    return metadata
 
 
 def extract_py_versions(classifiers):
@@ -95,16 +137,46 @@ def dump_pretty_json(data, fp=sys.stdout):
     json.dump(data, fp, sort_keys=True, indent=2, separators=(',', ': '))
 
 
+class ArgFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                   argparse.RawDescriptionHelpFormatter):
+
+    usage_suffix = ' < packages.json > status.json'
+
+    # argparse says: "the API of the formatter objects is still considered an
+    # implementation detail."  *sigh*  So I have to either duplicate
+    # information and hardcode my usage string, or rely on internal
+    # implementation details.
+
+    def _format_usage(self, *args):
+        return (super(ArgFormatter, self)._format_usage(*args).rstrip('\n\n')
+                + self.usage_suffix + '\n\n')
+
+
 def main():
-    verbose = False
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=ArgFormatter)
+    parser.add_argument('--cache-dir', metavar='DIR', default='.cache/meta',
+                        help='directory for caching PyPI metadata')
+    parser.add_argument('--cache-max-age', metavar='AGE', default=ONE_DAY,
+                        help='maximum age of cached metadata in seconds')
+    parser.add_argument('--verbose', action='store_true',
+                        help='be more verbose')
+    args = parser.parse_args()
+    if not os.path.isdir(args.cache_dir):
+        try:
+            os.makedirs(args.cache_dir)
+        except Exception as e:
+            parser.error('Could not create cache directory: {}: {}'.format(
+                         e.__class__.__name__, e))
     packages = json.load(sys.stdin)
     for info in packages:
         package_name = info['name']
         try:
-            metadata = get_metadata(package_name)
+            metadata = get_metadata(package_name, args.cache_dir)
         except Exception as e:
             not_found = isinstance(e, urllib.error.HTTPError) and e.code == 404
-            if verbose or not not_found:
+            if args.verbose or not not_found:
                 print('Could not fetch metadata about {}: {}: {}'.format(
                         package_name, e.__class__.__name__, e),
                       file=sys.stderr)

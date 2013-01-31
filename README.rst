@@ -22,6 +22,11 @@ Example output::
 Caching
 -------
 
+The ./get_pypi_status.py caches metadata received from PyPI for 24 hours
+by default in ./cache/meta/\*.json.  You can override these settings with
+
+  ./get_pypi_status.py --cache-dir=~/.cache/pypi-meta --cache-max-age=3600
+
 The sdist cache used by get_deps.py is (a) configurable, and (b) compatible
 with buildout.  If you use a shared buildout cache, so you can speed up
 the initial dependency extraction with ::
