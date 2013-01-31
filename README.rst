@@ -29,7 +29,7 @@ with ::
   ./get_pypi_status.py --cache-dir=~/.cache/pypi-meta --cache-max-age=3600
 
 The sdist cache used by get_deps.py is (a) configurable, and (b) compatible
-with buildout.  If you use a shared buildout cache, so you can speed up
+with buildout.  If you use a shared buildout cache, you can speed up
 the initial dependency extraction with ::
 
   ./get_deps.py --cache-dir=~/.buildout/cache/dist < status.json > deps.json
