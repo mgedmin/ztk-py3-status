@@ -40,12 +40,31 @@ ZOPE_SVN_WEB = 'http://zope3.pov.lt/trac/browser/{}'
 
 
 EXCEPTIONS = {
+    # I've no idea what 'docutils' is doing in svn.zope.org, but it's version
+    # 0.4.0
+    'docutils',
+    # same with pytz, it was probably an external import
+    'pytz',
+    # more of these
+    'ClientForm', 'mechanize',
+    # Just a name clash for some very generic names
+    'book', 'test',
     # Things that are unlikely to ever be released to PyPI
     '2github', 'Sandbox', 'ReleaseSupport', 'Skeletons',
     'buildout-website', 'developer_docs', 'docs.zope.org_website',
     'non-zpl-doc-resources', 'www.zope.org', 'www.zope.org_buildout',
     'zodbdocs', 'zope-foundation-admin', 'zope-story-website',
 }
+
+
+OVERRIDES = {
+    'zc.buildout': {'source_web_url': 'https://github.com/buildout/buildout'},
+}
+
+
+# We get ZODB3 (in svn) _and_ ZODB (in git), is that ok?  I think so,
+# the package was split (old ZODB3 into separate persistent, BTrees,
+# ZODB, ZEO)
 
 
 def list_zope_packages_from_svn():
@@ -108,7 +127,8 @@ def list_zope_packages_from_github():
     # API documented at
     # http://developer.github.com/v3/repos/#list-organization-repositories
     return [dict(name=repo['name'], source_web_url=repo['html_url'])
-            for repo in get_github_list(ZOPE_GITHUB_LIST)]
+            for repo in get_github_list(ZOPE_GITHUB_LIST)
+            if repo['name'] not in EXCEPTIONS]
 
 
 def list_zope_packages():
@@ -118,6 +138,9 @@ def list_zope_packages():
     packages = {info['name']: info
                 for info in itertools.chain(list_zope_packages_from_svn(),
                                             list_zope_packages_from_github())}
+    for k, v in OVERRIDES.items():
+        if k in packages:
+            packages[k].update(v)
     return sorted(packages.values(), key=itemgetter('name'))
 
 
