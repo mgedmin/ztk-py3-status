@@ -8,10 +8,11 @@ Requires Python 3 and the 'svn' command-line tool.
 Prints JSON data (a list of dictionaries) to the standard output.
 Example output::
 
-    [{"name": "zope.interface"}, ...]
+    [{"name": "zope.interface", "source_web_url": "http://..."}, ...]
 
 """
 
+import argparse
 import itertools
 import json
 import subprocess
@@ -125,7 +126,26 @@ def dump_pretty_json(data, fp=sys.stdout):
     json.dump(data, fp, sort_keys=True, indent=2, separators=(',', ': '))
 
 
+class ArgFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                   argparse.RawDescriptionHelpFormatter):
+
+    usage_suffix = ' > packages.json'
+
+    # argparse says: "the API of the formatter objects is still considered an
+    # implementation detail."  *sigh*  So I have to either duplicate
+    # information and hardcode my usage string, or rely on internal
+    # implementation details.
+
+    def _format_usage(self, *args):
+        return (super(ArgFormatter, self)._format_usage(*args).rstrip('\n\n')
+                + self.usage_suffix + '\n\n')
+
+
 def main():
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=ArgFormatter)
+    args = parser.parse_args()
     packages = list_zope_packages()
     dump_pretty_json(packages)
 
