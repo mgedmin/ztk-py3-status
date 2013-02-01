@@ -80,7 +80,7 @@ def get_json_and_headers(url):
         return json.loads(r.read().decode('UTF-8')), r.info()
 
 
-def get_github_list(url):
+def get_github_list(url, batch_size=100):
     """Perform (a series of) HTTP GETs for a URL, return deserialized JSON.
 
     Supports batching (which Github indicates by the presence of a Link header,
@@ -91,12 +91,13 @@ def get_github_list(url):
 
     """
     # API documented at http://developer.github.com/v3/#pagination
-    res, headers = get_json_and_headers('{}?per_page=100'.format(url))
+    res, headers = get_json_and_headers('{}?per_page={}'.format(
+                                                url, batch_size))
     page = 1
     while 'rel="next"' in headers.get('Link', ''):
         page += 1
-        more, headers = get_json_and_headers('{}?page={}&per_page=100'.format(
-                                                    url, page))
+        more, headers = get_json_and_headers('{}?page={}&per_page={}'.format(
+                                                    url, page, batch_size))
         res += more
     return res
 
