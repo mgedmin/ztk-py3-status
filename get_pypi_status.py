@@ -186,7 +186,7 @@ def main():
         package_name = info['name']
         try:
             metadata = get_metadata(package_name, args.cache_dir,
-                                    max_age=args.cache_max_age)
+                                    max_age=int(args.cache_max_age))
         except Exception as e:
             not_found = isinstance(e, urllib.error.HTTPError) and e.code == 404
             if args.verbose or not not_found:
