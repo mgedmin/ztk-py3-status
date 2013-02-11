@@ -82,7 +82,7 @@ def main():
     else:
         print('  node[label="", shape="point", width=0.1, height=0.1];')
         print('  edge[arrowhead="open", arrowsize=0.3];')
-    print('  node[color="#000000", fillcolor="#44444480"];')
+    print('  node[color="#dddddd", fillcolor="#e8e8e880"];')
     print('  edge[color="#cccccc"];')
     for info in packages:
         if info['name'] not in reachable:
