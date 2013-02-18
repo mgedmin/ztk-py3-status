@@ -44,6 +44,8 @@ def main():
         metavar='package-name', default=argparse.SUPPRESS,
         help='include these packages and their dependencies only'
              ' (default: all packages that either have or are dependencies)')
+    parser.add_argument('-e', '--extras', '--include-extras', action='store_true',
+        help='include requirements for setuptools extras')
     parser.add_argument('-l', '--layout', default='neato',
         help='specify graph layout (e.g. dot, neato, twopi, circo, fdp)')
     parser.add_argument('-b', '--big-nodes', action='store_true',
@@ -65,12 +67,23 @@ def main():
                    if any(r != 'setuptools' for r in pkg['requires'])}
         title = "zope.* deps"
 
+    if opts.extras:
+        def get_requirements(info):
+            requires = set(r for r in info.get('requires', [])
+                           if r != 'setuptools')
+            requires.update(r
+                for extra_requires in info.get('requires_extras', {}).values()
+                for r in extra_requires if r != 'setuptools')
+            return sorted(requires)
+    else:
+        def get_requirements(info):
+            return [r for r in info.get('requires', []) if r != 'setuptools']
+
     reachable = set()
     def visit(pkg):
         if pkg not in reachable:
             reachable.add(pkg)
-            requires = package_by_name.get(pkg, {}).get('requires', [])
-            for dep in requires:
+            for dep in get_requirements(package_by_name.get(pkg, {})):
                 visit(dep)
     for pkg in include:
         visit(pkg)
@@ -93,7 +106,7 @@ def main():
         else:
             print('  "{}"[color="#ffcccc", fillcolor="#ffdddd80"];'
                   .format(info['name']))
-        requires = [r for r in info['requires'] if r != 'setuptools']
+        requires = get_requirements(info)
         for other in requires:
             if other in info['blockers']:
                 attrs = '[color="#bbbbbb"]'
