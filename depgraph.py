@@ -67,23 +67,27 @@ def main():
                    if any(r != 'setuptools' for r in pkg['requires'])}
         title = "zope.* deps"
 
-    if opts.extras:
+    if args.extras:
         def get_requirements(info):
-            requires = set(r for r in info.get('requires', [])
-                           if r != 'setuptools')
-            requires.update(r
-                for extra_requires in info.get('requires_extras', {}).values()
-                for r in extra_requires if r != 'setuptools')
-            return sorted(requires)
+            requires = [(r, None) for r in info.get('requires', [])
+                        if r != 'setuptools']
+            seen = set(r for r, _ in requires)
+            for extra, extra_requires in sorted(info.get('requires_extras', {}).items()):
+                for r in extra_requires:
+                    if r not in seen:
+                        requires.append((r, extra))
+                        seen.add(r)
+            return requires
     else:
         def get_requirements(info):
-            return [r for r in info.get('requires', []) if r != 'setuptools']
+            return [(r, None) for r in info.get('requires', [])
+                    if r != 'setuptools']
 
     reachable = set()
     def visit(pkg):
         if pkg not in reachable:
             reachable.add(pkg)
-            for dep in get_requirements(package_by_name.get(pkg, {})):
+            for dep, extra in get_requirements(package_by_name.get(pkg, {})):
                 visit(dep)
     for pkg in include:
         visit(pkg)
@@ -107,9 +111,14 @@ def main():
             print('  "{}"[color="#ffcccc", fillcolor="#ffdddd80"];'
                   .format(info['name']))
         requires = get_requirements(info)
-        for other in requires:
+        for other, extra in requires:
+            attrs = []
             if other in info['blockers']:
-                attrs = '[color="#bbbbbb"]'
+                attrs.append('color="#bbbbbb"')
+            if extra:
+                attrs.append('style="dotted"')
+            if attrs:
+                attrs = '[{}]'.format(', '.join(attrs))
             else:
                 attrs = ''
             print('  "{}" -> "{}"{};'.format(info['name'], other, attrs))
