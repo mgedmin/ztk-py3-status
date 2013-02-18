@@ -74,8 +74,7 @@ def main():
                         svn_url, e.__class__.__name__, e), file=sys.stderr)
             else:
                 info['removed_from_svn'] = (not files_in_trunk or
-                        len(files_in_trunk) == 1
-                            and files_in_trunk[0].startswith('MOVED'))
+                        any('MOVED' in fn for fn in files_in_trunk))
     dump_pretty_json(packages)
 
 
