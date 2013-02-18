@@ -121,21 +121,21 @@ def strip_version_constraints(requirement):
 def parse_requirements(requires_txt_data):
     """Parse a setuptools requires.txt file.
 
-    Returns a list of requirements.
-
-    Ignores setuptools extras.
+    Returns a list of requirements, and a dictionary of extra requirements.
 
     Drops all version constraints.
     """
-    requirements = []
+    cur = requirements = []
+    extras = {}
     for line in requires_txt_data.decode('UTF-8').splitlines():
         if line.startswith('['):
-            # we're done with normal requirements and not interested in extras
-            break
+            name = line[1:].partition(']')[0]
+            cur = extras[name] = []
+            continue
         if not line:
             continue
-        requirements.append(strip_version_constraints(line))
-    return requirements
+        cur.append(strip_version_constraints(line))
+    return requirements, extras
 
 
 def dump_pretty_json(data, fp=sys.stdout):
@@ -175,7 +175,7 @@ def main():
     for info in packages:
         package_name = info['name']
         sdist_url = info.get('sdist_url')
-        requirements = []
+        requirements, extras = [], {}
         if sdist_url:
             try:
                 sdist_filename = get_local_sdist(sdist_url, args.cache_dir)
@@ -186,12 +186,13 @@ def main():
             else:
                 try:
                     requires_txt_data = extract_requirements(sdist_filename)
-                    requirements = parse_requirements(requires_txt_data or b'')
+                    requirements, extras = parse_requirements(requires_txt_data or b'')
                 except Exception as e:
                     print('Could not parse requires.txt for {}: {}: {}'.format(
                                 sdist_filename, e.__class__, e),
                               file=sys.stderr)
         info['requires'] = requirements
+        info['requires_extras'] = extras
     dump_pretty_json(packages)
 
 
