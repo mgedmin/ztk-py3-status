@@ -46,10 +46,15 @@ def main():
              ' (default: all packages that either have or are dependencies)')
     parser.add_argument('-e', '--extras', '--include-extras', action='store_true',
         help='include requirements for setuptools extras')
-    parser.add_argument('-l', '--layout', default='neato',
-        help='specify graph layout (e.g. dot, neato, twopi, circo, fdp)')
+    parser.add_argument('-a', '--auto-nodes', action='store_true',
+        help='use large nodes for small graphs, small nodes for large graphs')
+    parser.add_argument('--auto-threshold', metavar='N', type=int, default=50,
+        help='number of nodes below which the graph is considered to be small')
     parser.add_argument('-b', '--big-nodes', action='store_true',
-        help='use large nodes (works better with --layout=dot)')
+        help='use large nodes (implies --layout=dot unless overridden)')
+    parser.add_argument('-l', '--layout', default=argparse.SUPPRESS,
+        help='specify graph layout (e.g. dot, neato, twopi, circo, fdp;'
+             ' default: dot for --big-nodes, neato otherwise)')
     args = parser.parse_args()
 
     packages = json.load(sys.stdin)
@@ -92,9 +97,21 @@ def main():
     for pkg in include:
         visit(pkg)
 
+    if args.auto_nodes:
+        big_nodes = len(reachable) < args.auto_threshold
+    else:
+        big_nodes = args.big_nodes
+
+    if getattr(args, 'layout', None):
+        layout = args.layout
+    elif big_nodes:
+        layout = 'dot'
+    else:
+        layout = 'neato'
+
     print('strict digraph "{}" {{'.format(title)) # }} -- fix vim's autoindent
-    print('  graph[layout="{}", outputorder="edgesfirst"];'.format(args.layout))
-    if args.big_nodes:
+    print('  graph[layout="{}", outputorder="edgesfirst"];'.format(layout))
+    if big_nodes:
         print('  node[shape="box", style="filled"];')
     else:
         print('  node[label="", shape="point", width=0.1, height=0.1];')
