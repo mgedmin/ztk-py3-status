@@ -15,7 +15,13 @@ Example output::
     "supports": ["2.6", "2.7", "3.2", "3.3"]},
     "supports_py3": true,
     "requires": ["setuptools"],
-    "blockers": []},
+    "blockers": [],
+    "blocks": [],
+    "sdist_url": "http://pypi.python.org/packages/source/z/zope.interface/zope.interface-4.0.3.tar.gz",
+    "source_web_url": "https://github.com/zopefoundation/zope.interface",
+    "github_web_url": "https://github.com/zopefoundation/zope.interface",
+    "svn_web_url": "http://zope3.pov.lt/trac/browser/zope.interface",
+    "removed_from_svn": false},
    ...]
 
 

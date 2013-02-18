@@ -144,7 +144,9 @@ def list_zope_packages_from_github():
         if repo['name'] in EXCEPTIONS:
             continue
         pkg = dict(name=repo['name'], github_web_url=repo['html_url'])
-        if repo['size'] != 0: # empty repository
+        if repo['size'] == 0: # empty repository
+            pkg['empty_github_repo'] = True
+        else:
             pkg['source_web_url'] = repo['html_url']
         packages.append(pkg)
     return packages
