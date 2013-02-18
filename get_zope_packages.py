@@ -8,7 +8,13 @@ Requires Python 3 and the 'svn' command-line tool.
 Prints JSON data (a list of dictionaries) to the standard output.
 Example output::
 
-    [{"name": "zope.interface", "source_web_url": "http://..."}, ...]
+    [{"name": "zope.interface",
+      "source_web_url": "https://...",
+      "github_web_url": "https://..."},
+     {"name": "zope.fixers",
+      "source_web_url": "http://...",
+      "svn_web_url": "http://..."},
+      ...]
 
 """
 
@@ -19,6 +25,7 @@ import subprocess
 import sys
 import urllib.request
 from operator import itemgetter
+from collections import defaultdict
 
 
 class Error(Exception):
@@ -58,7 +65,11 @@ EXCEPTIONS = {
 
 
 OVERRIDES = {
-    'zc.buildout': {'source_web_url': 'https://github.com/buildout/buildout'},
+    # buildout is on github but not in https://github.com/zopefoundation
+    'zc.buildout': {
+        'source_web_url': 'https://github.com/buildout/buildout',
+        'github_web_url': 'https://github.com/buildout/buildout',
+    },
 }
 
 
@@ -79,8 +90,10 @@ def list_zope_packages_from_svn():
         if line.endswith(b'/'):
             name = line[:-1].decode('UTF-8')
             if name not in EXCEPTIONS:
+                url = ZOPE_SVN_WEB.format(name)
                 packages.append(dict(name=name,
-                                     source_web_url=ZOPE_SVN_WEB.format(name)))
+                                     source_web_url=url,
+                                     svn_web_url=url))
     return packages
 
 
@@ -126,18 +139,25 @@ def list_zope_packages_from_github():
     """Fetch a list of Zope projects from Github."""
     # API documented at
     # http://developer.github.com/v3/repos/#list-organization-repositories
-    return [dict(name=repo['name'], source_web_url=repo['html_url'])
-            for repo in get_github_list(ZOPE_GITHUB_LIST)
-            if repo['name'] not in EXCEPTIONS]
+    packages = []
+    for repo in get_github_list(ZOPE_GITHUB_LIST):
+        if repo['name'] in EXCEPTIONS:
+            continue
+        pkg = dict(name=repo['name'], github_web_url=repo['html_url'])
+        if repo['size'] != 0: # empty repository
+            pkg['source_web_url'] = repo['html_url']
+        packages.append(pkg)
+    return packages
 
 
 def list_zope_packages():
     """Fetch a list of Zope projects from multiple sources."""
     # order matters here: if repository is both in svn and in github, we
-    # assume github has the latest version
-    packages = {info['name']: info
-                for info in itertools.chain(list_zope_packages_from_svn(),
-                                            list_zope_packages_from_github())}
+    # assume github has the latest version (unless the github one is empty)
+    packages = defaultdict(dict)
+    for info in itertools.chain(list_zope_packages_from_svn(),
+                                list_zope_packages_from_github()):
+        packages[info['name']].update(info)
     for k, v in OVERRIDES.items():
         if k in packages:
             packages[k].update(v)
