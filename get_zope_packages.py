@@ -190,8 +190,14 @@ def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=ArgFormatter)
+    parser.add_argument('package_names', nargs='*',
+        metavar='package-name', default=argparse.SUPPRESS,
+        help='list these packages only (default: all packages)')
     args = parser.parse_args()
     packages = list_zope_packages()
+    filter = getattr(args, 'package_names', None)
+    if filter:
+        packages = [info for info in packages if info['name'] in filter]
     dump_pretty_json(packages)
 
 
