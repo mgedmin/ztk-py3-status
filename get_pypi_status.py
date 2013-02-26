@@ -39,6 +39,7 @@ PYPI_SERVER = 'http://pypi.python.org/pypi'
 
 
 ONE_DAY = 24*60*60 # seconds
+UNLIMITED = None
 
 
 def get_cache_filename(package_name, cache_dir):
@@ -52,7 +53,7 @@ def get_cached_metadata(package_name, cache_dir, max_age=ONE_DAY):
     try:
         with open(filename) as f:
             mtime = os.fstat(f.fileno()).st_mtime
-            if time.time() - mtime > max_age:
+            if max_age is not UNLIMITED and time.time() - mtime > max_age:
                 return None
             return json.load(f)
     except IOError:
@@ -184,6 +185,7 @@ def main():
     packages = json.load(sys.stdin)
     for info in packages:
         package_name = info['name']
+        metadata = None
         try:
             metadata = get_metadata(package_name, args.cache_dir,
                                     max_age=int(args.cache_max_age))
@@ -193,9 +195,15 @@ def main():
                 print('Could not fetch metadata about {}: {}: {}'.format(
                         package_name, e.__class__.__name__, e),
                       file=sys.stderr)
-            info.update(version=None, sdist_url=None, supports=[])
-        else:
+            if not not_found:
+                # if there's an intermittent 502 error use stale data instead
+                # of reporting that this package doesn't exist on PyPI.
+                metadata = get_cached_metadata(package_name, cache_dir,
+                                           max_age=UNLIMITED)
+        if metadata:
             info.update(extract_interesting_information(metadata))
+        else:
+            info.update(version=None, sdist_url=None, supports=[])
     dump_pretty_json(packages)
 
 
