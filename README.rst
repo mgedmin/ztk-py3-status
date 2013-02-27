@@ -12,7 +12,7 @@ Example output::
 
   [{"name": "zope.interface",
     "version": "4.0.3",
-    "supports": ["2.6", "2.7", "3.2", "3.3"]},
+    "supports": ["2.6", "2.7", "3.2", "3.3", "pypy"]},
     "supports_py3": true,
     "requires": ["setuptools"],
     "blockers": [],

@@ -108,10 +108,14 @@ def get_metadata(package_name, cache_dir=None, max_age=ONE_DAY):
 
 def extract_py_versions(classifiers):
     """Extract a list of supported Python versions from trove classifiers."""
+    pypy = 'Programming Language :: Python :: Implementation :: PyPy'
     prefix = 'Programming Language :: Python :: ' # note trailing space
     versions = []
     seen_detailed = set()
     for classifier in classifiers:
+        if classifier == pypy:
+            versions.append('pypy')
+            continue
         if not classifier.startswith(prefix):
             continue
         rest = classifier[len(prefix):]
