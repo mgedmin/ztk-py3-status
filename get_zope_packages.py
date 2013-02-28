@@ -70,6 +70,11 @@ OVERRIDES = {
         'source_web_url': 'https://github.com/buildout/buildout',
         'github_web_url': 'https://github.com/buildout/buildout',
     },
+    # manuel wants to be free from zopefoundation
+    'manuel': {
+        'source_web_url': 'https://github.com/benji-york/manuel',
+        'github_web_url': 'https://github.com/benji-york/manuel',
+    },
 }
 
 
