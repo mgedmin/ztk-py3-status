@@ -75,6 +75,11 @@ OVERRIDES = {
         'source_web_url': 'https://github.com/benji-york/manuel',
         'github_web_url': 'https://github.com/benji-york/manuel',
     },
+    # apparently relstorage was moved to github a while ago
+    'relstorage': {
+        'source_web_url': 'https://github.com/zodb/relstorage',
+        'github_web_url': 'https://github.com/zodb/relstorage',
+    },
 }
 
 
