@@ -23,7 +23,8 @@ import subprocess
 import sys
 
 
-ZOPE_SVN = 'svn://svn.zope.org/repos/main'
+ZOPE_SVN = 'svn://svn.zope.org/repos/main' # must not have trailing /
+ZOPE_SVN_WEB = 'http://zope3.pov.lt/trac/browser/' # trailing / mandatory
 
 
 def svn_ls(url):
@@ -66,6 +67,9 @@ def main():
     for info in packages:
         package_name = info['name']
         if 'svn_web_url' in info and 'github_web_url' in info:
+            if info['svn_web_url'].startswith(ZOPE_SVN_WEB):
+                # RelStorage is at .../repos/main/relstorage
+                package_name = info['svn_web_url'][len(ZOPE_SVN_WEB):]
             svn_url = '{}/{}/trunk'.format(ZOPE_SVN, package_name)
             try:
                 files_in_trunk = svn_ls(svn_url)
