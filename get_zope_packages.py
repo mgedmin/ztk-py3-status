@@ -76,7 +76,9 @@ OVERRIDES = {
         'github_web_url': 'https://github.com/benji-york/manuel',
     },
     # apparently relstorage was moved to github a while ago
+    # also its PyPI name is capitalized
     'relstorage': {
+        'name': 'RelStorage',
         'source_web_url': 'https://github.com/zodb/relstorage',
         'github_web_url': 'https://github.com/zodb/relstorage',
     },
