@@ -37,6 +37,55 @@ class ArgFormatter(argparse.ArgumentDefaultsHelpFormatter,
                 + self.usage_suffix + '\n\n')
 
 
+class GraphGenerator(object):
+
+    def __init__(self, stream=None):
+        self.stream = stream if stream is not None else sys.stdout
+
+    def start(self, title, kind='digraph'):
+        assert kind in ('graph', 'digraph')
+        self._edge = '->' if kind == 'digraph' else '--'
+        self._print('strict digraph "%s" {' % title)
+
+    def options(self, obj, **attrs):
+        assert obj in ('graph', 'node', 'edge')
+        if attrs:
+            self._print('  %s%s;' % (obj, self._attrs(attrs)))
+
+    def node(self, name, **attrs):
+        assert self._edge, "Call start() first!"
+        self._print('  "%s"%s;' % (self._quote(name), self._attrs(attrs)))
+
+    def edge(self, src, dst, **attrs):
+        self._print('  "%s" %s "%s"%s;' % (self._quote(src), self._edge,
+                                           self._quote(dst),
+                                           self._attrs(attrs)))
+
+    def end(self):
+        self._print('}')
+
+    def _print(self, s):
+        print(s, file=self.stream)
+
+    def _quote(self, s):
+        return (s.replace("\\", "\\\\")
+                 .replace("\"", "\\\"")
+                 .replace("\n", "\\n")
+                 .replace("\0", "\\\\0"))
+
+    def _value(self, value):
+        if isinstance(value, str):
+            return '"%s"' % self._quote(value)
+        else:
+            return str(value)
+
+    def _attrs(self, attrs):
+        if not attrs:
+            return ''
+        return '[%s]' % ', '.join('%s=%s' % (k, self._value(v))
+                                  for k, v in sorted(attrs.items()))
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -130,46 +179,42 @@ def main():
     else:
         layout = 'neato'
 
-    print('strict digraph "{}" {{'.format(title)) # }} -- fix vim's autoindent
-    print('  graph[layout="{}", outputorder="edgesfirst"];'.format(layout))
+    graph = GraphGenerator()
+    graph.start(title)
+    graph.options('graph', layout=layout, outputorder="edgesfirst")
     if big_nodes:
-        print('  node[shape="box", style="filled"];')
+        graph.options('node', shape="box", style="filled")
     else:
-        print('  node[label="", shape="point", width=0.1, height=0.1];')
-        print('  edge[arrowhead="open", arrowsize=0.3];')
-    print('  node[color="#dddddd", fillcolor="#e8e8e880"];')
-    print('  edge[color="#cccccc"];')
+        graph.options('node', label="", shape="point", width=0.1, height=0.1)
+        graph.options('edge', arrowhead="open", arrowsize=0.3)
+    graph.options('node', color="#dddddd", fillcolor="#e8e8e880")
+    graph.options('edge', color="#cccccc")
     for info in packages:
         if info['name'] not in reachable:
             continue
         attrs = {}
         if info['supports_py3']:
-            attrs['color'] = '"#ccffcc"'
-            attrs['fillcolor'] = '"#ddffdd80"'
+            attrs['color'] = "#ccffcc"
+            attrs['fillcolor'] = "#ddffdd80"
         else:
-            attrs['color'] = '"#ffcccc"'
-            attrs['fillcolor'] = '"#ffdddd80"'
+            attrs['color'] = "#ffcccc"
+            attrs['fillcolor'] = "#ffdddd80"
         if info['name'] in highlight:
-            attrs['color'] = '"#ff8c00"'
-        attrs = '[{}]'.format(', '.join('%s=%s' % (k, v) for k, v in sorted(attrs.items())))
-        print('  "{}"{};'.format(info['name'], attrs))
+            attrs['color'] = "#ff8c00"
+        graph.node(info['name'], **attrs)
         requires = get_requirements(info)
         for other, extra in requires:
             attrs = {}
             if other in info['blockers']:
-                attrs['color'] = '"#bbbbbb"'
+                attrs['color'] = "#bbbbbb"
             if extra:
-                attrs['style'] = '"dotted"'
+                attrs['style'] = "dotted"
                 if big_nodes:
-                    attrs['label'] = '"%s"' % extra
+                    attrs['label'] = extra
             if (info['name'], extra, other) in highlight_edges:
-                attrs['color'] = '"#ff8c00"'
-            if attrs:
-                attrs = '[{}]'.format(', '.join('%s=%s' % (k, v) for k, v in sorted(attrs.items())))
-            else:
-                attrs = ''
-            print('  "{}" -> "{}"{};'.format(info['name'], other, attrs))
-    print('}')
+                attrs['color'] = "#ff8c00"
+            graph.edge(info['name'], other, **attrs)
+    graph.end()
 
 
 if __name__ == '__main__':
