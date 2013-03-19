@@ -226,6 +226,8 @@ def main():
              ' default: dot for --big-nodes, neato otherwise)')
     parser.add_argument('-w', '--why', metavar='PACKAGE',
         help='highlight the dependency chain that pulls in PACKAGE')
+    parser.add_argument('--requiring', metavar='PACKAGE',
+        help='show only the dependency chain that pulls in PACKAGE')
     args = parser.parse_args()
 
     packages = json.load(sys.stdin)
@@ -251,6 +253,10 @@ def main():
         deps.add_node(node)
 
     include = deps.transitive_closure(include)
+
+    if args.requiring:
+        rdeps = deps.transposed()
+        include.intersection_update(rdeps.traverse(args.requiring))
 
     highlight = set()
     highlight_edges = set()
