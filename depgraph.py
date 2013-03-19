@@ -76,7 +76,7 @@ def main():
         title = "zope.* deps"
 
     if args.extras:
-        def get_requirements(info):
+        def get_requirements_with_extras(info):
             requires = [(r, None) for r in info.get('requires', [])
                         if r != 'setuptools']
             seen = set(r for r, _ in requires)
@@ -87,17 +87,22 @@ def main():
                         seen.add(r)
             return requires
     else:
-        def get_requirements(info):
+        def get_requirements_with_extras(info):
             return [(r, None) for r in info.get('requires', [])
                     if r != 'setuptools']
+    def get_requirements(info):
+        return [(r, e) for r, e in get_requirements_with_extras(info)
+                if '[' not in r]
 
     reachable = set()
     required_by = defaultdict(list)
     def visit(pkg):
         if pkg not in reachable:
             reachable.add(pkg)
-            for dep, extra in get_requirements(package_by_name.get(pkg, {})):
+            info = package_by_name.get(pkg, {})
+            for dep, extra in get_requirements_with_extras(info):
                 required_by[dep].append((pkg, extra))
+            for dep, extra in get_requirements(info):
                 visit(dep)
     for pkg in include:
         visit(pkg)
@@ -107,10 +112,10 @@ def main():
     if args.why:
         def traverse(pkg):
             if pkg not in highlight:
-                highlight.add(pkg)
+                highlight.add(pkg.partition('[')[0])
                 for other, extra in required_by[pkg]:
                     highlight_edges.add((other, extra, pkg))
-                    traverse(other)
+                    traverse('%s[%s]' % (other, extra) if extra else other)
         traverse(args.why)
 
     if args.auto_nodes:

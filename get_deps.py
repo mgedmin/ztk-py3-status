@@ -108,14 +108,38 @@ def strip_version_constraints(requirement):
         'zope.foo'
 
         >>> strip_version_constraints('zope.foo[docs] >=4.0.0, <4.1.0a1')
-        'zope.foo'
+        'zope.foo[docs]'
 
     """
     return (requirement.partition('=')[0]
                        .partition('<')[0]
                        .partition('>')[0]
-                       .partition('[')[0]
                        .strip())
+
+
+def unroll_extras(requirement):
+    """Unroll extra requirements
+
+        >>> unroll_extras('zope.foo')
+        ['zope.foo']
+
+        >>> unroll_extras('zope.foo[docs]')
+        ['zope.foo', 'zope.foo[docs]']
+
+        >>> unroll_extras('zope.foo[docs,tests]')
+        ['zope.foo', 'zope.foo[docs]', 'zope.foo[tests]']
+
+        >>> unroll_extras('zope.foo [ docs , tests ] ')
+        ['zope.foo', 'zope.foo[docs]', 'zope.foo[tests]']
+
+    """
+    base, _, extras = requirement.partition('[')
+    base = base.strip()
+    extras = extras.partition(']')[0].strip().split(',') if extras else []
+    requirements = [base]
+    for extra in extras:
+        requirements.append(base + '[' + extra.strip() + ']')
+    return requirements
 
 
 def parse_requirements(requires_txt_data):
@@ -134,7 +158,7 @@ def parse_requirements(requires_txt_data):
             continue
         if not line:
             continue
-        cur.append(strip_version_constraints(line))
+        cur.extend(unroll_extras(strip_version_constraints(line)))
     return requirements, extras
 
 
