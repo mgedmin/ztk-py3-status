@@ -134,6 +134,8 @@ def main():
                 attrs.append('color="#bbbbbb"')
             if extra:
                 attrs.append('style="dotted"')
+                if big_nodes:
+                    attrs.append('label="%s"' % extra)
             if attrs:
                 attrs = '[{}]'.format(', '.join(attrs))
             else:
