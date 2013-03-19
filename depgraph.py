@@ -213,6 +213,8 @@ def main():
         metavar='package-name', default=argparse.SUPPRESS,
         help='include these packages and their dependencies only'
              ' (default: all packages that either have or are dependencies)')
+    parser.add_argument('-i', metavar='deps.json', dest='input', default=argparse.SUPPRESS,
+        help='read package data from file (default: stdin)')
     parser.add_argument('-e', '--extras', '--include-extras', action='store_true',
         help='include requirements for setuptools extras')
     parser.add_argument('-a', '--auto-nodes', action='store_true',
@@ -230,7 +232,14 @@ def main():
         help='show only the dependency chain that pulls in PACKAGE')
     args = parser.parse_args()
 
-    packages = json.load(sys.stdin)
+    if not hasattr(args, 'input') and sys.stdin.isatty():
+        parser.error('refusing to read from a terminal')
+
+    if hasattr(args, 'input'):
+        with open(args.input) as f:
+            packages = json.load(f)
+    else:
+        packages = json.load(sys.stdin)
 
     deps = package_graph(packages)
     deps.remove_edges_to('setuptools') # because everything depends on it
