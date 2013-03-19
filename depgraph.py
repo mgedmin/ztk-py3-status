@@ -185,7 +185,11 @@ class Graph(object):
         return closure
 
 
-def package_graph(json_data):
+def base_name(name_with_extra):
+    return name_with_extra.partition('[')[0]
+
+
+def package_graph(json_data, explicit_extras=False):
     graph = Graph()
     for info in json_data:
         src = info['name']
@@ -194,14 +198,16 @@ def package_graph(json_data):
             graph.add_edge(src, dst, extra=None)
         for extra, requires in info.get('requires_extras', {}).items():
             for dst in requires:
-                if not graph.has_edge(src, dst):
+                if explicit_extras:
+                    graph.add_edge('%s[%s]' % (src, extra), dst, extra=None)
+                elif not graph.has_edge(src, dst):
                     graph.add_edge(src, dst, extra=extra)
     # if a requires b[x], then a implicitly requires b
     # we show that by having all b[x] require b in our graph
     for node in graph.ghost_nodes:
         if '[' in node:
-            base = node.partition('[')[0]
-            graph.add_edge(node, base, extra=None)
+            graph.add_edge(node, base_name(node), extra=None,
+                           tight=True)
     return graph
 
 
@@ -217,6 +223,8 @@ def main():
         help='read package data from file (default: stdin)')
     parser.add_argument('-e', '--extras', '--include-extras', action='store_true',
         help='include requirements for setuptools extras')
+    parser.add_argument('--explicit-extras', action='store_true',
+        help='show setuptools extras explicitly (implies --extras)')
     parser.add_argument('-a', '--auto-nodes', action='store_true',
         help='use large nodes for small graphs, small nodes for large graphs')
     parser.add_argument('--auto-threshold', metavar='N', type=int, default=50,
@@ -241,7 +249,7 @@ def main():
     else:
         packages = json.load(sys.stdin)
 
-    deps = package_graph(packages)
+    deps = package_graph(packages, args.explicit_extras)
     deps.remove_edges_to('setuptools') # because everything depends on it
 
     if getattr(args, 'package_names', None):
@@ -255,6 +263,8 @@ def main():
         include = {node for node in deps.nodes if deps.edges(node)}
         title = "zope.* deps"
 
+    if args.explicit_extras:
+        args.extras = True
     if not args.extras:
         deps.remove_edges_with_attr('extra')
 
@@ -262,6 +272,12 @@ def main():
         deps.add_node(node)
 
     include = deps.transitive_closure(include)
+
+    if args.explicit_extras:
+        new = {node for node in deps.nodes if base_name(node) in include}
+        while new != include:
+            include = deps.transitive_closure(new)
+            new = {node for node in deps.nodes if base_name(node) in include}
 
     if args.requiring:
         rdeps = deps.transposed()
@@ -312,7 +328,7 @@ def main():
         graph.node(node, **attrs)
         for edge in deps.edges(node):
             # if foo depends on bar[extra], we want to show it depending on bar
-            dest = edge.partition('[')[0]
+            dest = edge if args.explicit_extras else base_name(edge)
             if dest not in include:
                 continue
             attrs = {}
@@ -325,6 +341,8 @@ def main():
                     attrs['label'] = extra
             if (edge, node) in highlight_edges:
                 attrs['color'] = "#ff8c00"
+            if deps.edge_attrs(node, edge).get('tight'):
+                attrs['weight'] = 10
             graph.edge(node, edge, **attrs)
     graph.end()
 
