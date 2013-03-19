@@ -19,6 +19,7 @@ This script requires Python 3.
 import argparse
 import json
 import sys
+from collections import defaultdict
 
 
 class ArgFormatter(argparse.ArgumentDefaultsHelpFormatter,
@@ -55,6 +56,8 @@ def main():
     parser.add_argument('-l', '--layout', default=argparse.SUPPRESS,
         help='specify graph layout (e.g. dot, neato, twopi, circo, fdp;'
              ' default: dot for --big-nodes, neato otherwise)')
+    parser.add_argument('-w', '--why', metavar='PACKAGE',
+        help='highlight the dependency chain that pulls in PACKAGE')
     args = parser.parse_args()
 
     packages = json.load(sys.stdin)
@@ -89,13 +92,26 @@ def main():
                     if r != 'setuptools']
 
     reachable = set()
+    required_by = defaultdict(list)
     def visit(pkg):
         if pkg not in reachable:
             reachable.add(pkg)
             for dep, extra in get_requirements(package_by_name.get(pkg, {})):
+                required_by[dep].append((pkg, extra))
                 visit(dep)
     for pkg in include:
         visit(pkg)
+
+    highlight = set()
+    highlight_edges = set()
+    if args.why:
+        def traverse(pkg):
+            if pkg not in highlight:
+                highlight.add(pkg)
+                for other, extra in required_by[pkg]:
+                    highlight_edges.add((other, extra, pkg))
+                    traverse(other)
+        traverse(args.why)
 
     if args.auto_nodes:
         big_nodes = len(reachable) < args.auto_threshold
@@ -121,23 +137,30 @@ def main():
     for info in packages:
         if info['name'] not in reachable:
             continue
+        attrs = {}
         if info['supports_py3']:
-            print('  "{}"[color="#ccffcc", fillcolor="#ddffdd80"];'
-                  .format(info['name']))
+            attrs['color'] = '"#ccffcc"'
+            attrs['fillcolor'] = '"#ddffdd80"'
         else:
-            print('  "{}"[color="#ffcccc", fillcolor="#ffdddd80"];'
-                  .format(info['name']))
+            attrs['color'] = '"#ffcccc"'
+            attrs['fillcolor'] = '"#ffdddd80"'
+        if info['name'] in highlight:
+            attrs['color'] = '"#ff8c00"'
+        attrs = '[{}]'.format(', '.join('%s=%s' % (k, v) for k, v in sorted(attrs.items())))
+        print('  "{}"{};'.format(info['name'], attrs))
         requires = get_requirements(info)
         for other, extra in requires:
-            attrs = []
+            attrs = {}
             if other in info['blockers']:
-                attrs.append('color="#bbbbbb"')
+                attrs['color'] = '"#bbbbbb"'
             if extra:
-                attrs.append('style="dotted"')
+                attrs['style'] = '"dotted"'
                 if big_nodes:
-                    attrs.append('label="%s"' % extra)
+                    attrs['label'] = '"%s"' % extra
+            if (info['name'], extra, other) in highlight_edges:
+                attrs['color'] = '"#ff8c00"'
             if attrs:
-                attrs = '[{}]'.format(', '.join(attrs))
+                attrs = '[{}]'.format(', '.join('%s=%s' % (k, v) for k, v in sorted(attrs.items())))
             else:
                 attrs = ''
             print('  "{}" -> "{}"{};'.format(info['name'], other, attrs))
