@@ -189,6 +189,7 @@ def main():
     parser.add_argument('--cache-dir', metavar='DIR', default='.cache',
                         help='directory for caching downloaded sdists')
     args = parser.parse_args()
+    args.cache_dir = os.path.expanduser(args.cache_dir)
     if not os.path.isdir(args.cache_dir):
         try:
             os.makedirs(args.cache_dir)
