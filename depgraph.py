@@ -86,6 +86,125 @@ class GraphGenerator(object):
                                   for k, v in sorted(attrs.items()))
 
 
+class Graph(object):
+
+    def __init__(self):
+        self._nodes = defaultdict(dict)
+        self._edges = defaultdict(lambda: defaultdict(dict))
+        self._ghost_nodes = set()
+
+    @property
+    def nodes(self):
+        return sorted(self._nodes)
+
+    @property
+    def ghost_nodes(self):
+        return sorted(self._ghost_nodes)
+
+    def node_attrs(self, src):
+        return self._nodes[src]
+
+    def edges(self, src):
+        return sorted(self._edges[src])
+
+    def has_edge(self, src, dst):
+        return dst in self._edges[src]
+
+    def edge_attrs(self, src, dst):
+        return self._edges[src][dst]
+
+    def transposed(self):
+        other = Graph()
+        for node, attrs in self._nodes.items():
+            other.add_node(node, **attrs)
+        for src, edges in self._edges.items():
+            for dst, attrs in edges.items():
+                other.add_edge(dst, src, **attrs)
+        return other
+
+    def add_node(self, name, **attrs):
+        self._nodes[name].update(attrs)
+        self._ghost_nodes.discard(name)
+
+    def add_edge(self, src, dst, **attrs):
+        self._edges[src][dst].update(attrs)
+        if src not in self._nodes:
+            self._ghost_nodes.add(src)
+        if dst not in self._nodes:
+            self._ghost_nodes.add(dst)
+
+    def remove_edges_to(self, dst):
+        for src, edges in self._edges.items():
+            if dst in edges:
+                del edges[dst]
+        if dst not in self._edges:
+            self._ghost_nodes.discard(dst)
+
+    def remove_edges_with_attr(self, attr):
+        for src, edges in self._edges.items():
+            for dst, attrs in list(edges.items()):
+                if attrs.get(attr):
+                    del edges[dst]
+        self._update_ghost_nodes()
+
+    def _update_ghost_nodes(self):
+        self._ghost_nodes = set(self._edges)
+        for src, edges in self._edges.items():
+            self._ghost_nodes.update(edges)
+        self._ghost_nodes.difference_update(self._nodes)
+
+    def traverse(self, src, visited=None):
+        if visited is None:
+            visited = set([src])
+        yield src
+        for dst in self._edges[src]:
+            if dst not in visited:
+                visited.add(dst)
+                for node in self.traverse(dst, visited):
+                    yield node
+
+    def traverse_edges(self, src, visited=None):
+        if visited is None:
+            visited = set([src])
+        for dst in self._edges[src]:
+            yield (src, dst)
+            if dst not in visited:
+                visited.add(dst)
+                for edge in self.traverse_edges(dst, visited):
+                    yield edge
+
+    def transitive_closure(self, nodes):
+        closure = set(nodes)
+        queue = list(nodes)
+        while queue:
+            src = queue.pop()
+            for dst in self._edges[src]:
+                if dst not in closure:
+                    closure.add(dst)
+                    queue.append(dst)
+        return closure
+
+
+def package_graph(json_data):
+    graph = Graph()
+    for info in json_data:
+        src = info['name']
+        graph.add_node(src, supports_py3=info['supports_py3'])
+        for dst in info.get('requires', []):
+            graph.add_edge(src, dst, extra=None)
+        for extra, requires in info.get('requires_extras', {}).items():
+            for dst in requires:
+                if not graph.has_edge(src, dst):
+                    graph.add_edge(src, dst, extra=extra)
+    # if a requires b[x], then a implicitly requires b
+    # we show that by having all b[x] require b in our graph
+    for node in graph.ghost_nodes:
+        if '[' in node:
+            base = node.partition('[')[0]
+            graph.add_edge(node, base, extra=None)
+    return graph
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -110,65 +229,38 @@ def main():
     args = parser.parse_args()
 
     packages = json.load(sys.stdin)
-    package_by_name = {info['name']: info for info in packages}
+
+    deps = package_graph(packages)
+    deps.remove_edges_to('setuptools') # because everything depends on it
 
     if getattr(args, 'package_names', None):
         include = set(args.package_names)
         title = "{} deps".format(" ".join(args.package_names))
         for pkg in args.package_names:
-            if pkg not in package_by_name:
+            if pkg not in deps.nodes:
                 print("{}: unknown package: {}".format(parser.prog, pkg),
                       file=sys.stderr)
     else:
-        include = {pkg['name'] for pkg in packages
-                   if any(r != 'setuptools' for r in pkg['requires'])}
+        include = {node for node in deps.nodes if deps.edges(node)}
         title = "zope.* deps"
 
-    if args.extras:
-        def get_requirements_with_extras(info):
-            requires = [(r, None) for r in info.get('requires', [])
-                        if r != 'setuptools']
-            seen = set(r for r, _ in requires)
-            for extra, extra_requires in sorted(info.get('requires_extras', {}).items()):
-                for r in extra_requires:
-                    if r not in seen:
-                        requires.append((r, extra))
-                        seen.add(r)
-            return requires
-    else:
-        def get_requirements_with_extras(info):
-            return [(r, None) for r in info.get('requires', [])
-                    if r != 'setuptools']
-    def get_requirements(info):
-        return [(r, e) for r, e in get_requirements_with_extras(info)
-                if '[' not in r]
+    if not args.extras:
+        deps.remove_edges_with_attr('extra')
 
-    reachable = set()
-    required_by = defaultdict(list)
-    def visit(pkg):
-        if pkg not in reachable:
-            reachable.add(pkg)
-            info = package_by_name.get(pkg, {})
-            for dep, extra in get_requirements_with_extras(info):
-                required_by[dep].append((pkg, extra))
-            for dep, extra in get_requirements(info):
-                visit(dep)
-    for pkg in include:
-        visit(pkg)
+    for node in deps.ghost_nodes:
+        deps.add_node(node)
+
+    include = deps.transitive_closure(include)
 
     highlight = set()
     highlight_edges = set()
     if args.why:
-        def traverse(pkg):
-            if pkg not in highlight:
-                highlight.add(pkg.partition('[')[0])
-                for other, extra in required_by[pkg]:
-                    highlight_edges.add((other, extra, pkg))
-                    traverse('%s[%s]' % (other, extra) if extra else other)
-        traverse(args.why)
+        rdeps = deps.transposed()
+        highlight = set(rdeps.traverse(args.why))
+        highlight_edges = set(rdeps.traverse_edges(args.why))
 
     if args.auto_nodes:
-        big_nodes = len(reachable) < args.auto_threshold
+        big_nodes = len(include) < args.auto_threshold
     else:
         big_nodes = args.big_nodes
 
@@ -189,31 +281,36 @@ def main():
         graph.options('edge', arrowhead="open", arrowsize=0.3)
     graph.options('node', color="#dddddd", fillcolor="#e8e8e880")
     graph.options('edge', color="#cccccc")
-    for info in packages:
-        if info['name'] not in reachable:
+    for node in deps.nodes:
+        if node not in include:
             continue
         attrs = {}
-        if info['supports_py3']:
+        supports_py3 = deps.node_attrs(node).get('supports_py3')
+        if supports_py3:
             attrs['color'] = "#ccffcc"
             attrs['fillcolor'] = "#ddffdd80"
-        else:
+        elif supports_py3 is not None:
             attrs['color'] = "#ffcccc"
             attrs['fillcolor'] = "#ffdddd80"
-        if info['name'] in highlight:
+        if node in highlight:
             attrs['color'] = "#ff8c00"
-        graph.node(info['name'], **attrs)
-        requires = get_requirements(info)
-        for other, extra in requires:
+        graph.node(node, **attrs)
+        for edge in deps.edges(node):
+            # if foo depends on bar[extra], we want to show it depending on bar
+            dest = edge.partition('[')[0]
+            if dest not in include:
+                continue
             attrs = {}
-            if other in info['blockers']:
+            if not deps.node_attrs(dest).get('supports_py3', True):
                 attrs['color'] = "#bbbbbb"
+            extra = deps.edge_attrs(node, edge).get('extra')
             if extra:
                 attrs['style'] = "dotted"
                 if big_nodes:
                     attrs['label'] = extra
-            if (info['name'], extra, other) in highlight_edges:
+            if (edge, node) in highlight_edges:
                 attrs['color'] = "#ff8c00"
-            graph.edge(info['name'], other, **attrs)
+            graph.edge(node, edge, **attrs)
     graph.end()
 
 
