@@ -202,8 +202,8 @@ def main():
             if not not_found:
                 # if there's an intermittent 502 error use stale data instead
                 # of reporting that this package doesn't exist on PyPI.
-                metadata = get_cached_metadata(package_name, cache_dir,
-                                           max_age=UNLIMITED)
+                metadata = get_cached_metadata(package_name, args.cache_dir,
+                                               max_age=UNLIMITED)
         if metadata:
             info.update(extract_interesting_information(metadata))
         else:
