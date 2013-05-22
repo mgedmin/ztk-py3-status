@@ -190,12 +190,17 @@ def main():
                         help='directory for caching downloaded sdists')
     args = parser.parse_args()
     args.cache_dir = os.path.expanduser(args.cache_dir)
+
+    if sys.stdin.isatty():
+        parser.error('refusing to read from a terminal')
+
     if not os.path.isdir(args.cache_dir):
         try:
             os.makedirs(args.cache_dir)
         except Exception as e:
             parser.error('Could not create cache directory: {}: {}'.format(
                          e.__class__.__name__, e))
+
     packages = json.load(sys.stdin)
     for info in packages:
         package_name = info['name']

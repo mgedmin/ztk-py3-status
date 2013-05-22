@@ -63,6 +63,9 @@ def main():
         formatter_class=ArgFormatter)
     args = parser.parse_args() # just so we get --help
 
+    if sys.stdin.isatty():
+        parser.error('refusing to read from a terminal')
+
     packages = json.load(sys.stdin)
     for info in packages:
         package_name = info['name']

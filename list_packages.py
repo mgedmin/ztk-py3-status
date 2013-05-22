@@ -62,6 +62,9 @@ def main():
         help='list packages that do not have released on PyPI')
     args = parser.parse_args()
 
+    if sys.stdin.isatty():
+        parser.error('refusing to read from a terminal')
+
     packages = json.load(sys.stdin)
     for package in packages:
         if args.with_blockers:

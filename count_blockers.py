@@ -20,6 +20,7 @@ and produces an annotated JSON list ::
 This script requires Python 3.
 """
 
+import argparse
 import json
 import sys
 
@@ -29,8 +30,32 @@ def dump_pretty_json(data, fp=sys.stdout):
     json.dump(data, fp, sort_keys=True, indent=2, separators=(',', ': '))
 
 
+class ArgFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                   argparse.RawDescriptionHelpFormatter):
+
+    usage_suffix = ' < deps.json > blockers.json'
+
+    # argparse says: "the API of the formatter objects is still considered an
+    # implementation detail."  *sigh*  So I have to either duplicate
+    # information and hardcode my usage string, or rely on internal
+    # implementation details.
+
+    def _format_usage(self, *args):
+        return (super(ArgFormatter, self)._format_usage(*args).rstrip('\n\n')
+                + self.usage_suffix + '\n\n')
+
+
 def main():
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=ArgFormatter)
+    args = parser.parse_args()
+
+    if sys.stdin.isatty():
+        parser.error('refusing to read from a terminal')
+
     packages = json.load(sys.stdin)
+
     # A subtle bit of logic: we compute a set of known packages that do not
     # express support for Python 3 instead of computing a set of known packages
     # that *do* express support for Python 3.  We want to assume that

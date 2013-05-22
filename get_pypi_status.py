@@ -180,12 +180,17 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be more verbose')
     args = parser.parse_args()
+
+    if sys.stdin.isatty():
+        parser.error('refusing to read from a terminal')
+
     if not os.path.isdir(args.cache_dir):
         try:
             os.makedirs(args.cache_dir)
         except Exception as e:
             parser.error('Could not create cache directory: {}: {}'.format(
                          e.__class__.__name__, e))
+
     packages = json.load(sys.stdin)
     for info in packages:
         package_name = info['name']
