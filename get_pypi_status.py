@@ -32,7 +32,7 @@ class Error(Exception):
     """An error that is not a bug in this script."""
 
 
-PYPI_SERVER = 'http://pypi.python.org/pypi'
+PYPI_SERVER = 'https://pypi.python.org/pypi'
 
 # PyPI API is documented at http://wiki.python.org/moin/PyPiJson
 # (or you can use XMLRPC: http://wiki.python.org/moin/PyPiXmlRpc)
