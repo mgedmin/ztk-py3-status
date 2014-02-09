@@ -20,6 +20,7 @@ This script requires Python 3.
 
 import argparse
 import email
+import functools
 import json
 import os
 import sys
@@ -89,14 +90,14 @@ def ratelimit(reqs_per_second):
                 next_window += interval
             else:
                 next_window = now + interval
-            return fn(args, kw)
+            return fn(*args, **kw)
         return _wrapper
     return _ratelimit
 
 
 # Rate limiting: see
 # https://mail.python.org/pipermail/distutils-sig/2014-February/023831.html
-@ratelimit(reqs_pers_second=5)
+@ratelimit(reqs_per_second=5)
 def get_json(url):
     """Perform HTTP GET for a URL, return deserialized JSON."""
     with urllib.request.urlopen(url) as r:
