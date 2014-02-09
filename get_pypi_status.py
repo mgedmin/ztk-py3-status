@@ -71,6 +71,32 @@ def put_cached_metadata(package_name, cache_dir, metadata):
         pass
 
 
+def ratelimit(reqs_per_second):
+    """Make sure the decorated function is rate-limited.
+
+    Inserts delays to ensure the decorated function gets called not more than
+    reqs_per_second times per second.
+    """
+    interval = 1.0 / reqs_per_second
+    next_window = time.time()
+    def _ratelimit(fn):
+        @functools.wraps(fn)
+        def _wrapper(*args, **kw):
+            nonlocal next_window
+            now = time.time()
+            if now < next_window:
+                time.sleep(next_window - now)
+                next_window += interval
+            else:
+                next_window = now + interval
+            return fn(args, kw)
+        return _wrapper
+    return _ratelimit
+
+
+# Rate limiting: see
+# https://mail.python.org/pipermail/distutils-sig/2014-February/023831.html
+@ratelimit(reqs_pers_second=5)
 def get_json(url):
     """Perform HTTP GET for a URL, return deserialized JSON."""
     with urllib.request.urlopen(url) as r:
