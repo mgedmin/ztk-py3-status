@@ -206,8 +206,8 @@ def main():
                         help='directory for caching PyPI metadata')
     parser.add_argument('--cache-max-age', metavar='AGE', default=ONE_DAY,
                         help='maximum age of cached metadata in seconds')
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='be more verbose')
+    parser.add_argument('-v', '--verbose', action='count',
+                        help='be more verbose (can be repeated)')
     args = parser.parse_args()
 
     if sys.stdin.isatty():
@@ -221,18 +221,28 @@ def main():
                          e.__class__.__name__, e))
 
     packages = json.load(sys.stdin)
-    for info in packages:
+    prevmsglen = 0
+    for n, info in enumerate(packages):
         package_name = info['name']
+        if args.verbose:
+            msg = "[{}/{}]: querying PyPI about {}".format(
+                                n + 1, len(packages), package_name)
+            padding = " " * max(0, prevmsglen - len(msg))
+            sys.stderr.write("\r{}{}".format(msg, padding))
+            sys.stderr.flush()
+            prevmsglen = len(msg)
+
         metadata = None
         try:
             metadata = get_metadata(package_name, args.cache_dir,
                                     max_age=int(args.cache_max_age))
         except Exception as e:
             not_found = isinstance(e, urllib.error.HTTPError) and e.code == 404
-            if args.verbose or not not_found:
-                print('Could not fetch metadata about {}: {}: {}'.format(
+            if args.verbose > 1 or not not_found:
+                print('\nCould not fetch metadata about {}: {}: {}'.format(
                         package_name, e.__class__.__name__, e),
                       file=sys.stderr)
+                prevmsglen = 0
             if not not_found:
                 # if there's an intermittent 502 error use stale data instead
                 # of reporting that this package doesn't exist on PyPI.
