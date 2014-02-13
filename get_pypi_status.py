@@ -95,11 +95,6 @@ def ratelimit(reqs_per_second):
     return _ratelimit
 
 
-# Rate limiting: see
-# https://mail.python.org/pipermail/distutils-sig/2014-February/023831.html
-# It was later disabled: see
-# https://mail.python.org/pipermail/distutils-sig/2014-February/023848.html
-@ratelimit(reqs_per_second=5)
 def get_json(url):
     """Perform HTTP GET for a URL, return deserialized JSON."""
     with urllib.request.urlopen(url) as r:
@@ -208,6 +203,8 @@ def main():
                         help='maximum age of cached metadata in seconds')
     parser.add_argument('-v', '--verbose', action='count',
                         help='be more verbose (can be repeated)')
+    parser.add_argument('--rate-limit', metavar='REQS-PER-SECOND', type=float,
+                        default=5, help='rate-limit PyPI requests')
     args = parser.parse_args()
 
     if sys.stdin.isatty():
@@ -219,6 +216,16 @@ def main():
         except Exception as e:
             parser.error('Could not create cache directory: {}: {}'.format(
                          e.__class__.__name__, e))
+
+    global get_json
+    if args.rate_limit > 0:
+        if args.verbose:
+            print("Rate-limiting to {} requests per second".format(
+                    args.rate_limit), file=sys.stderr)
+        get_json = ratelimit(args.rate_limit)(get_json)
+    else:
+        if args.verbose:
+            print("Rate-limiting disabled", file=sys.stderr)
 
     packages = json.load(sys.stdin)
     prevmsglen = 0
