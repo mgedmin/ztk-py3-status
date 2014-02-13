@@ -97,6 +97,8 @@ def ratelimit(reqs_per_second):
 
 # Rate limiting: see
 # https://mail.python.org/pipermail/distutils-sig/2014-February/023831.html
+# It was later disabled: see
+# https://mail.python.org/pipermail/distutils-sig/2014-February/023848.html
 @ratelimit(reqs_per_second=5)
 def get_json(url):
     """Perform HTTP GET for a URL, return deserialized JSON."""
