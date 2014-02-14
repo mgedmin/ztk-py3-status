@@ -201,7 +201,7 @@ def main():
                         help='directory for caching PyPI metadata')
     parser.add_argument('--cache-max-age', metavar='AGE', default=ONE_DAY,
                         help='maximum age of cached metadata in seconds')
-    parser.add_argument('-v', '--verbose', action='count',
+    parser.add_argument('-v', '--verbose', action='count', default=0,
                         help='be more verbose (can be repeated)')
     parser.add_argument('--rate-limit', metavar='REQS-PER-SECOND', type=float,
                         default=5, help='rate-limit PyPI requests')
