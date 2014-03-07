@@ -35,6 +35,9 @@ class Error(Exception):
 
 PYPI_SERVER = 'https://pypi.python.org/pypi'
 
+# For testing against the new Warehouse software:
+# PYPI_SERVER = 'https://pypi-preview.a.ssl.fastly.net/pypi'
+
 # PyPI API is documented at http://wiki.python.org/moin/PyPiJson
 # (or you can use XMLRPC: http://wiki.python.org/moin/PyPiXmlRpc)
 
@@ -101,7 +104,8 @@ def get_json(url):
         # We expect PyPI to return UTF-8, but let's verify that.
         content_type = r.info().get('Content-Type', '').lower()
         if content_type not in ('application/json; charset="utf-8"',
-                                'application/json; charset=utf-8'):
+                                'application/json; charset=utf-8',
+                                'application/json'):
             raise Error('Did not get UTF-8 JSON data from {}, got {}'
                         .format(url, content_type))
         return json.loads(r.read().decode('UTF-8'))
