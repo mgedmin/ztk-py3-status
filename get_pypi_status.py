@@ -26,6 +26,7 @@ import os
 import sys
 import time
 import urllib.request
+from urllib.parse import urljoin
 from io import StringIO
 
 
@@ -173,7 +174,7 @@ def extract_sdist_url(metadata):
     """Extract the URL for downloading the source distribution."""
     for info in metadata['urls']:
         if info['packagetype'] == 'sdist':
-            return info['url']
+            return urljoin(PYPI_SERVER, info['url'])
     return None
 
 
