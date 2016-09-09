@@ -82,6 +82,12 @@ OVERRIDES = {
         'source_web_url': 'https://github.com/zodb/relstorage',
         'github_web_url': 'https://github.com/zodb/relstorage',
     },
+    # Zope2 is the PyPi name, Zope the github name
+    'Zope': {
+        'name': 'Zope2',
+        'source_web_url': 'https://github.com/zopefoundation/Zope',
+        'github_web_url': 'https://github.com/zopefoundation/Zope',
+    },
 }
 
 
