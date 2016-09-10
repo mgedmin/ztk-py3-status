@@ -20,10 +20,12 @@ class Tests(unittest.TestCase):
             "Programming Language :: Python :: 3",
             "Programming Language :: Python :: 3.2",
             "Programming Language :: Python :: 3.3",
+            "Programming Language :: Python :: 3.4",
+            "Programming Language :: Python :: 3.5",
             "Programming Language :: Python :: Implementation :: CPython",
             "Programming Language :: Python :: Implementation :: PyPy",
             "Topic :: Software Development :: Libraries :: Python Modules",
-        ]), ['2.6', '2.7', '3.2', '3.3', 'pypy'])
+        ]), ['2.6', '2.7', '3.2', '3.3', '3.4', '3.5', 'pypy'])
 
     def test_extract_py_versions_no_specifics(self):
         self.assertEqual(extract_py_versions([
