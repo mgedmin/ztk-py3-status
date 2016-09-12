@@ -1,8 +1,11 @@
 Scripts to determine the Python 3 porting status of various Zope packages
 =========================================================================
 
-These cron scripts produce JSON files consumed by JavaScript in
+These scripts are run from cron to produce JSON files consumed by JavaScript in
 https://github.com/ProgrammersOfVilnius/zope3.pov.lt/tree/master/py3
+
+The *actual* cron script is at https://gist.github.com/mgedmin/4686862
+
 
 Usage::
 
