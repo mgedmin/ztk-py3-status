@@ -162,7 +162,7 @@ def list_zope_packages_from_github():
         if repo['name'] in EXCEPTIONS:
             continue
         pkg = dict(name=repo['name'], github_web_url=repo['html_url'])
-        if repo['size'] == 0: # empty repository
+        if repo['size'] == 0:  # empty repository
             pkg['empty_github_repo'] = True
         else:
             pkg['source_web_url'] = repo['html_url']
@@ -170,13 +170,17 @@ def list_zope_packages_from_github():
     return packages
 
 
-def list_zope_packages():
+def list_zope_packages(include_subversion):
     """Fetch a list of Zope projects from multiple sources."""
     # order matters here: if repository is both in svn and in github, we
     # assume github has the latest version (unless the github one is empty)
+    if include_subversion:
+        pkg_list = itertools.chain(list_zope_packages_from_svn(),
+                                   list_zope_packages_from_github())
+    else:
+        pkg_list = list_zope_packages_from_github()
     packages = defaultdict(dict)
-    for info in itertools.chain(list_zope_packages_from_svn(),
-                                list_zope_packages_from_github()):
+    for info in pkg_list:
         packages[info['name']].update(info)
     for k, v in OVERRIDES.items():
         if k in packages:
@@ -208,11 +212,15 @@ def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=ArgFormatter)
-    parser.add_argument('package_names', nargs='*',
+    parser.add_argument(
+        'package_names', nargs='*',
         metavar='package-name', default=argparse.SUPPRESS,
         help='list these packages only (default: all packages)')
+    parser.add_argument(
+        '--include-subversion', action='store_true',
+        help='also list old packages from svn.zope.org')
     args = parser.parse_args()
-    packages = list_zope_packages()
+    packages = list_zope_packages(include_subversion=args.include_subversion)
     filter = getattr(args, 'package_names', None)
     if filter:
         packages = [info for info in packages if info['name'] in filter]
