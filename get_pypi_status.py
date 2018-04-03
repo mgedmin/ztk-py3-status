@@ -34,16 +34,13 @@ class Error(Exception):
     """An error that is not a bug in this script."""
 
 
-PYPI_SERVER = 'https://pypi.python.org/pypi'
+PYPI_SERVER = 'https://pypi.org/pypi'
 
-# For testing against the new Warehouse software:
-# PYPI_SERVER = 'https://pypi-preview.a.ssl.fastly.net/pypi'
-
-# PyPI API is documented at http://wiki.python.org/moin/PyPiJson
-# (or you can use XMLRPC: http://wiki.python.org/moin/PyPiXmlRpc)
+# The PyPI API we use is documented at
+# https://warehouse.readthedocs.io/api-reference/json/#project
 
 
-ONE_DAY = 24*60*60 # seconds
+ONE_DAY = 24*60*60  # seconds
 UNLIMITED = None
 
 
@@ -84,6 +81,7 @@ def ratelimit(reqs_per_second):
     """
     interval = 1.0 / reqs_per_second
     next_window = time.time()
+
     def _ratelimit(fn):
         @functools.wraps(fn)
         def _wrapper(*args, **kw):
@@ -96,6 +94,7 @@ def ratelimit(reqs_per_second):
                 next_window = now + interval
             return fn(*args, **kw)
         return _wrapper
+
     return _ratelimit
 
 
@@ -138,7 +137,7 @@ def get_metadata(package_name, cache_dir=None, max_age=ONE_DAY):
 def extract_py_versions(classifiers):
     """Extract a list of supported Python versions from trove classifiers."""
     pypy = 'Programming Language :: Python :: Implementation :: PyPy'
-    prefix = 'Programming Language :: Python :: ' # note trailing space
+    prefix = 'Programming Language :: Python :: '  # note trailing space
     versions = []
     seen_detailed = set()
     for classifier in classifiers:
@@ -153,7 +152,7 @@ def extract_py_versions(classifiers):
             # an IndexError in subsequent checks
             continue
         if not rest[0].isdigit():
-            # e.g. "Programming Language :: Python :: Implementation :: CPython"
+            # eg. "Programming Language :: Python :: Implementation :: CPython"
             continue
         if '.' in rest:
             # if we've seen e.g. '2.x', make a note omit '2' from the list
