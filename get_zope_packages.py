@@ -153,13 +153,15 @@ def get_github_list(url, batch_size=100):
     return res
 
 
-def list_zope_packages_from_github():
+def list_zope_packages_from_github(include_archived):
     """Fetch a list of Zope projects from Github."""
     # API documented at
     # http://developer.github.com/v3/repos/#list-organization-repositories
     packages = []
     for repo in get_github_list(ZOPE_GITHUB_LIST):
         if repo['name'] in EXCEPTIONS:
+            continue
+        if repo['archived'] and not include_archived:
             continue
         pkg = dict(name=repo['name'], github_web_url=repo['html_url'])
         if repo['size'] == 0:  # empty repository
@@ -170,15 +172,15 @@ def list_zope_packages_from_github():
     return packages
 
 
-def list_zope_packages(include_subversion):
+def list_zope_packages(include_subversion, include_archived):
     """Fetch a list of Zope projects from multiple sources."""
-    # order matters here: if repository is both in svn and in github, we
-    # assume github has the latest version (unless the github one is empty)
+    pkg_list = list_zope_packages_from_github(
+        include_archived=include_archived)
     if include_subversion:
+        # order matters here: if repository is both in svn and in github, we
+        # assume github has the latest version (unless the github one is empty)
         pkg_list = itertools.chain(list_zope_packages_from_svn(),
-                                   list_zope_packages_from_github())
-    else:
-        pkg_list = list_zope_packages_from_github()
+                                   pkg_list)
     packages = defaultdict(dict)
     for info in pkg_list:
         packages[info['name']].update(info)
@@ -219,8 +221,12 @@ def main():
     parser.add_argument(
         '--include-subversion', action='store_true',
         help='also list old packages from svn.zope.org')
+    parser.add_argument(
+        '--include-archived', action='store_true',
+        help='also list archived repositories on github')
     args = parser.parse_args()
-    packages = list_zope_packages(include_subversion=args.include_subversion)
+    packages = list_zope_packages(include_subversion=args.include_subversion,
+                                  include_archived=args.include_archived)
     filter = getattr(args, 'package_names', None)
     if filter:
         packages = [info for info in packages if info['name'] in filter]
