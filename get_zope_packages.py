@@ -147,8 +147,9 @@ def get_github_list(url, batch_size=100):
     page = 1
     while 'rel="next"' in headers.get('Link', ''):
         page += 1
-        more, headers = get_json_and_headers('{}?page={}&per_page={}'.format(
-                                                    url, page, batch_size))
+        more, headers = get_json_and_headers(
+            '{}?type=sources&page={}&per_page={}'.format(
+                url, page, batch_size))
         res += more
     return res
 
