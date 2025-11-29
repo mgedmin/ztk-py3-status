@@ -61,6 +61,8 @@ EXCEPTIONS = {
     'buildout-website', 'developer_docs', 'docs.zope.org_website',
     'non-zpl-doc-resources', 'www.zope.org', 'www.zope.org_buildout',
     'zodbdocs', 'zope-foundation-admin', 'zope-story-website',
+    'zpt-docs', 'zopetoolkit', 'zopefoundation.github.io', 'website-zope.de',
+    'groktoolkit',
     # Org-wide github templates, not a python package at all
     '.github',
 }
