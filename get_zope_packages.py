@@ -65,6 +65,7 @@ EXCEPTIONS = {
     'groktoolkit',
     # Org-wide github templates, not a python package at all
     '.github',
+    'meta',  # confusingly, https://pypi.org/p/meta exists but is unrelated
 }
 
 
